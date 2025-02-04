@@ -8,6 +8,8 @@ namespace RepoAnalyzer;
 
 public class AzureOpenAIService
 {
+    private const int TokenLimit = 5000;
+
     private readonly string endpoint;
     private readonly string deploymentName;
     private readonly HttpClient httpClient;
@@ -30,7 +32,11 @@ public class AzureOpenAIService
 
     public async Task<string> AnalyzeRepoAsync(List<string> files, Dictionary<string, string> fileContents)
     {
-        string prompt = BuildPrompt(fileContents);
+        // arbritarily set to more than 100 files
+        string prompt = files.Count > 100
+            ? BuildPrompt(fileContents, skipLargeFiles: true)
+            : BuildPrompt(fileContents);
+
         HttpRequestMessage requestMessage = await GenerateRequestMessage(prompt);
 
         var response = await httpClient.SendAsync(requestMessage);
@@ -49,10 +55,10 @@ public class AzureOpenAIService
         var payload = new
         {
             messages = new object[]
-                    {
-            new { role = "system", content = "You are an AI that generates YAML setup files for repositories." },
-            new { role = "user", content = prompt }
-                    },
+            {
+                new { role = "system", content = "You are an AI that generates YAML setup files for repositories." },
+                new { role = "user", content = prompt }
+            },
             temperature = 0.7,
             top_p = 0.95,
             max_tokens = 800,
@@ -74,16 +80,18 @@ public class AzureOpenAIService
         var prompt = "Analyze the following repository structure and generate a structured JSON output containing a YAML setup file that installs all dependencies in the repo:\n\n";
 
         int totalTokenCount = 0;
-        const int tokenLimit = 2000;
         StringBuilder contentBuilder = new StringBuilder();
 
-        foreach (var (file, content) in fileContents.OrderByDescending(f => f.Key)) // Prioritize key files
+        // **Sort files:** Important files first, then non-important files
+        var sortedFiles = fileContents.OrderByDescending(f => IsImportantFile(f.Key)).ToList();
+
+        foreach (var (file, content) in sortedFiles)
         {
             bool isImportant = IsImportantFile(file);
             int contentSize = content.Length;
 
             // If skipLargeFiles is enabled and file is non-important, skip large files
-            if (skipLargeFiles && !isImportant && contentSize > 1000)
+            if (skipLargeFiles && !isImportant && contentSize > 1000) // about 250 tokens
             {
                 continue; // Skip this file entirely
             }
@@ -92,25 +100,18 @@ public class AzureOpenAIService
             int estimatedTokens = contentSize / 4; // Roughly 1 token ≈ 4 characters
 
             // If adding this file exceeds the token limit, break
-            if (totalTokenCount + estimatedTokens > tokenLimit)
+            if (totalTokenCount + estimatedTokens > TokenLimit)
             {
                 break;
             }
 
-            // Only clip content if it exceeds 500 characters (if needed)
-            /*
-            if (contentSize > 500)
-            {
-                contentSize = 500;
-            }
-            */
-
-            contentBuilder.AppendLine($"## {file}\n{content.Substring(0, contentSize)}...");
+            contentBuilder.AppendLine($"## {file}\n{content}"); // No substring truncation now
             totalTokenCount += estimatedTokens;
         }
 
         prompt += contentBuilder.ToString();
         prompt += "\nBased on package and dependency files, infer required setup steps and return only a structured JSON output with a 'yaml' key containing the YAML string.\n";
+
         return prompt;
     }
 
@@ -146,14 +147,7 @@ public class AzureOpenAIService
     // Determines if a file is important based on its extension
     private bool IsImportantFile(string file)
     {
-        return file.EndsWith(".md")
-            || file.EndsWith(".txt")
-            || file.EndsWith(".json")
-            || file.EndsWith(".yml")
-            || file.EndsWith(".yaml")
-            || file.EndsWith(".toml")
-            || file.EndsWith(".xml")
-            || file.EndsWith(".gradle");
+        return file.EndsWith("README.md") || file.EndsWith("CONTRIBUTING.md");
     }
 
 }
