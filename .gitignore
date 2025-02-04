@@ -58,3 +58,4 @@ node_modules/
 
 # OpenAI API Key (Avoid accidental commits)
 OpenAIService.cs
+/Properties/launchSettings.json
