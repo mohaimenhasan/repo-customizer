@@ -1,4 +1,9 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Identity;
 using Newtonsoft.Json;
@@ -48,7 +53,6 @@ public class AzureOpenAIService
 
         var payload = new
         {
-            model = deploymentName,
             messages = new object[]
             {
                 new { role = "system", content = "You are an AI that generates YAML setup files for repositories." },
@@ -57,7 +61,7 @@ public class AzureOpenAIService
             temperature = 0.7,
             top_p = 0.95,
             max_tokens = 800,
-            response_format = "json"
+            stream = false
         };
 
         var token = await GetAccessTokenAsync();
@@ -76,9 +80,28 @@ public class AzureOpenAIService
             throw new Exception($"Azure OpenAI request failed: {response.StatusCode} - {response.ReasonPhrase}");
         }
 
-        var responseObject = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
-        string yamlOutput = responseObject?.choices?[0]?.message?.content?.yaml?.ToString() ?? throw new Exception("Invalid response format: 'yaml' key not found.");
+        try
+        {
+            var responseObject = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
+            var messageContent = responseObject["choices"][0]["message"]["content"].ToString();
 
-        return yamlOutput;
+            // Extract JSON block from message content
+            int jsonStart = messageContent.IndexOf("{"), jsonEnd = messageContent.LastIndexOf("}");
+            if (jsonStart >= 0 && jsonEnd > jsonStart)
+            {
+                string extractedJson = messageContent.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                var yamlObject = JsonConvert.DeserializeObject<Dictionary<string, string>>(extractedJson);
+
+                if (yamlObject != null && yamlObject.ContainsKey("yaml"))
+                {
+                    return yamlObject["yaml"];
+                }
+            }
+            throw new Exception("Invalid response format: Missing 'yaml' key.");
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to parse response: {ex.Message}");
+        }
     }
 }
