@@ -81,10 +81,10 @@ public class GitHubService
         {
             foreach (var file in tree.EnumerateArray())
             {
-                string filePath = file.GetProperty("path").GetString();
-                string type = file.GetProperty("type").GetString();
+                string? filePath = file.GetProperty("path").GetString();
+                string? type = file.GetProperty("type").GetString();
 
-                if (type == "blob") // Ensure only files are added
+                if (type == "blob" && !string.IsNullOrEmpty(filePath)) // Ensure only files are added
                 {
                     fileUrls.Add(filePath);
                 }
@@ -140,13 +140,21 @@ public class GitHubService
 
     private bool IsImportantFile(string file)
     {
-        if (ImportantFiles.Contains(file))
-            return true;
+        foreach (var importantFile in ImportantFiles)
+        {
+            if (file.EndsWith(importantFile, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
 
-        // Handle patterns like ".github/workflows/*.yml"
-        if (file.StartsWith(".github/workflows/") && file.EndsWith(".yml"))
+        // Handle special cases like ".github/workflows/*.yml"
+        if (file.StartsWith(".github/workflows/") && file.EndsWith(".yml", StringComparison.OrdinalIgnoreCase))
+        {
             return true;
+        }
 
         return false;
     }
+
 }

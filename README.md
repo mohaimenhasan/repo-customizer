@@ -11,7 +11,7 @@ RepoAnalyzer is a .NET console application that analyzes a public GitHub reposit
 ## Getting Started
 
 ### Prerequisites
-- **.NET 6 or later** installed ([Download](https://dotnet.microsoft.com/en-us/download))
+- **.NET 9 or later** installed ([Download](https://dotnet.microsoft.com/en-us/download))
 - **GitHub API access** (public repos only)
 - **Azure OpenAI API Key and Endpoint**
 
