@@ -102,6 +102,17 @@ public class AzureOpenAIService
             // If adding this file exceeds the token limit, break
             if (totalTokenCount + estimatedTokens > TokenLimit)
             {
+                // In order of important - we are picking a greedy approach here
+                // If we have to break, we should break on the last file added
+                // This is not perfect, but it's a simple heuristic that should work well in practice
+                var leftoverTokens = TokenLimit - totalTokenCount;
+                var lastFileTokens = estimatedTokens - leftoverTokens;
+
+                // each token is about 4 characters
+                var lastFileContent = content.Substring(0, lastFileTokens * 4);
+
+                // we can add the last file, but we need to truncate it
+                contentBuilder.AppendLine($"## {file}\n{lastFileContent}...");
                 break;
             }
 
