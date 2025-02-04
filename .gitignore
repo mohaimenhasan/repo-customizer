@@ -1,0 +1,60 @@
+# Build artifacts
+bin/
+obj/
+out/
+*.exe
+*.dll
+*.pdb
+*.log
+
+# User-specific files
+*.user
+*.vs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.cache
+*.sln.docstates
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+
+# Environment and credentials
+.env
+secrets.json
+appsettings.json
+appsettings.Development.json
+
+# NuGet packages
+*.nupkg
+packages/
+project.lock.json
+project.assets.json
+.nuget/
+
+# Rider and JetBrains IDEs
+.idea/
+*.iml
+
+# Resharper
+*.DotSettings.user
+resharper.xml
+_ReSharper*/
+
+# Local tool dependencies
+tools/
+node_modules/
+
+# Logs and debugging
+*.log
+*.tlog
+*.lastbuildstate
+
+# OpenAI API Key (Avoid accidental commits)
+OpenAIService.cs
